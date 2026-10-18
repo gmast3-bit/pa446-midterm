@@ -1,0 +1,17 @@
+---
+title: "PA 446 - Midterm"
+author: "Gulshan Mastonova"
+date: "2026-10-15"
+output: html_document:
+  theme: flatly
+  toc: true
+  toc_float: true
+  pdf_document:
+    toc: true
+---
+
+Part I: Repository and workflow
+Part II: Web scraping
+Part III: Open data API (Chicago Data Portal)
+Part IV: Census API (tidycensus)
+Part V: Civic data ethics
