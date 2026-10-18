@@ -50,8 +50,43 @@ ca_raw <- ca_tables |>
 nrow(ca_raw)
 head(ca_raw)
 ```
+Question 2: Scrape with CSS selectors
+Question 2.1. Extract title, price and availability
 
+Reading the books' first page to scrape
+```{r}
+books_page <- read_html("https://books.toscrape.com/")
+```
 
+Each book is inside <article class="product_pod">
+Full title is in the "title" attribute of the link inside <h3> (visible text is cut off for long titles)
+```{r}
+title <- books_page |>
+  html_elements("article.product_pod h3 a") |>
+  html_attr("title")
+```
+
+Price is the text of <p class="price_color">
+```{r}
+price <- books_page |>
+  html_elements("article.product_pod p.price_color") |>
+  html_text2()
+```
+
+Availability is the next of <p class="instock availability">
+```{r}
+availability <- books_page |>
+  html_elements("article.product_pod p.instock.availability") |>
+  html_text2()
+```
+
+Now, I have to combine the three vectors into one table
+```{r}
+books <- tibble(title, price, availability)
+
+nrow(books)
+head(books)
+```
 
 
 
