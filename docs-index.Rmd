@@ -11,7 +11,51 @@ output: html_document:
 ---
 
 Part I: Repository and workflow
+
 Part II: Web scraping
+
+Question 1: Scrape a table
+
+```{r}
+library(rvest)
+library(dplyr)
+library(janitor)
+library(readr)
+library(purrr)
+```
+
+Read the Wikipedia page on Chicago community areas into R
+```{r}
+ca_page <- read_html("https://en.wikipedia.org/wiki/Community_areas_in_Chicago")
+```
+
+This page consists of more than one table, so I'll grab akk the data tables ("wikitable")
+```{r}
+ca_tables <- ca_page |>
+  html_elements("table.wikitable") |>
+  html_table()
+```
+
+The number of tables we found
+```{r}
+length(ca_tables)
+```
+
+Keeping the table that has a "Total Population" column (the one that lists every community area and its population)
+```{r}
+ca_raw <- ca_tables |>
+  keep(~ "Total Population" %in% names(.x)) |>
+  pluck(1)
+
+nrow(ca_raw)
+head(ca_raw)
+```
+
+
+
+
+
 Part III: Open data API (Chicago Data Portal)
 Part IV: Census API (tidycensus)
 Part V: Civic data ethics
+
