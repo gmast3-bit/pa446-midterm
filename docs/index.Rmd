@@ -189,8 +189,6 @@ Part IV: Census API (tidycensus)
 
 Step 1: Identify the variables
 
-## Step 1: Identify the variables
-
 | Variable | Code |
 |---|---|
 | Gross rent as % of household income, Total | B25070_001E |
@@ -199,6 +197,31 @@ Step 1: Identify the variables
 
 I found B25070_010E by browsing the B25070 group, and B19013_001E by browsing the B19013 group
 (Median Household Income in the Past 12 Months).
+
+Step 2: Retrieve the data
+
+```{r}
+# Load tidycensus (Census API) and tidyverse (dplyr, tidyr, ggplot2)
+# The API key is read from .Renviron, so it never appears in this file
+library(tidycensus)
+library(tidyverse)
+
+# Get the three variables for every county in Ohio from the 2024 ACS 5-year.
+# Naming the variables here gives readable names instead of codes
+ohio_raw <- get_acs(
+  geography = "county",
+  state = "OH",
+  variables = c(rent_total    = "B25070_001",
+                rent_50plus   = "B25070_010",
+                median_income = "B19013_001"),
+  year = 2024,
+  survey = "acs5"
+)
+
+# Long format: 3 rows per county (88 counties x 3 = 264 rows)
+nrow(ohio_raw)
+head(ohio_raw)
+```
 
 
 
