@@ -163,7 +163,19 @@ sr_response <- GET(sr_url, query = sr_query)
 # A status code of 200 means the request worked
 status_code(sr_response)
 ```
+Parse the response
+
+```{r}
+# Pull the body of the response out as text, then turn the JSON into a data frame.
+# flatten = TRUE spreads nested fields (like location) into regular columns
+sr_text <- content(sr_response, as = "text", encoding = "UTF-8")
+west_town_311 <- fromJSON(sr_text, flatten = TRUE)
+
+# Number of rows (should be 1,000) and the column names
+nrow(west_town_311)
+names(west_town_311)
 ```
+
 
 
 
