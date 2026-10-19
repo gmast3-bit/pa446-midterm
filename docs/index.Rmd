@@ -250,7 +250,24 @@ head(ohio)
 ```
 
 Step 4: Analyze
+```{r}
+# Mean and median severe burden rate across Ohio's 88 counties
+ohio |>
+  summarise(mean_rate   = mean(severe_burden_rate),
+            median_rate = median(severe_burden_rate))
 
+# The 5 counties with the highest rates
+top5 <- ohio |>
+  slice_max(severe_burden_rate, n = 5) |>
+  select(county, severe_burden_rate, median_income)
+top5
+
+# The 5 counties with the lowest rates
+bottom5 <- ohio |>
+  slice_min(severe_burden_rate, n = 5) |>
+  select(county, severe_burden_rate, median_income)
+bottom5
+```
 
 Step 5: Visualize
 Step 6: Reflect
