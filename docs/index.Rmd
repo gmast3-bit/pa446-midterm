@@ -270,8 +270,53 @@ bottom5
 ```
 
 Step 5: Visualize
+
+```{r}
+# Scatterplot: each point is a county. geom_smooth(method = "lm") adds a
+# straight regression line with a shaded confidence band
+ggplot(ohio, aes(x = median_income, y = severe_burden_rate)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(labels = scales::dollar) +
+  labs(
+    title = "Higher-income Ohio counties have slightly lower severe rent burden",
+    subtitle = "Ohio counties, 2024 ACS 5-year estimates",
+    x = "Median household income",
+    y = "Severely rent-burdened renters (%)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Stack the top 5 and bottom 5 into one table and label each group
+top_bottom <- bind_rows(
+  top5    |> mutate(group = "Highest 5"),
+  bottom5 |> mutate(group = "Lowest 5")
+)
+
+# Bar chart: reorder() sorts the bars by rate; coord_flip() makes the
+# bars horizontal so county names are easy to read
+ggplot(top_bottom,
+       aes(x = reorder(county, severe_burden_rate),
+           y = severe_burden_rate, fill = group)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Ohio counties with the highest and lowest severe rent burden",
+    subtitle = "Share of renter households paying 50%+ of income on rent, 2024 ACS 5-year",
+    x = NULL,
+    y = "Severely rent-burdened renters (%)",
+    fill = NULL
+  ) +
+  theme_minimal()
+```
+
 Step 6: Reflect
+Q1: Income and severe rent burden
+This relationship is negative but weak: correlation was about -0.15, and the regression line slopes down only slightly. The possible explanation would be that college counties are at the top of the list, like Athens (Ohio University) and Portage (Kent State), where students report small income but still pay rent, that pushes the rate up. Also, urban counties like Hamilton and Lorain they both have higher rents and more low-income renters, even though the median income isn't low. Though, the median household income covers all households, who usually earn more than renter. 
+Q2: County level ACS's for targeting rental assistance two limitations would probably be: margins of error where small rural counties have less renters, hence the estimates are noisy. Also the fact that who's counted: the households with no cash rent or zero income are left out, and students distort the rate. 
 
 
 Part V: Civic data ethics
+
 
