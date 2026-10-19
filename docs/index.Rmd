@@ -223,7 +223,37 @@ nrow(ohio_raw)
 head(ohio_raw)
 ```
 
+Step 3: Clean and transform
+```{r}
+# 1. Drop the margin of error, then pivot so each county is one row
+#    with the three estimates side by side
+# 2. severe_burden_rate = share of renter households paying 50%+ of income on rent
+# 3. Sort from highest to lowest rate
+ohio <- ohio_raw |>
+  select(GEOID, NAME, variable, estimate) |>
+  pivot_wider(names_from = variable, values_from = estimate) |>
+  mutate(severe_burden_rate = rent_50plus / rent_total * 100) |>
+  arrange(desc(severe_burden_rate))
 
+nrow(ohio)
+head(ohio)
+```
+
+Bonus: Split NAME into county and state
+
+```{r p4-bonus}
+# NAME looks like "Athens County, Ohio" -- split it at ", " into two columns
+ohio <- ohio |>
+  separate_wider_delim(NAME, delim = ", ", names = c("county", "state"))
+
+head(ohio)
+```
+
+Step 4: Analyze
+
+
+Step 5: Visualize
+Step 6: Reflect
 
 
 Part V: Civic data ethics
