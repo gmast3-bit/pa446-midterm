@@ -176,6 +176,15 @@ nrow(west_town_311)
 names(west_town_311)
 ```
 
+Summarize
+```{r}
+# Count how many requests there are of each type,
+# sort from most to least common, and keep the top 10
+west_town_311 |>
+  count(sr_type, sort = TRUE) |>
+  slice_head(n = 10)
+```
+
 
 
 
