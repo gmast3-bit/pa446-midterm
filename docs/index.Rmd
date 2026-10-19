@@ -135,7 +135,7 @@ Part III: Open data API (Chicago Data Portal)
 ```{r}
 install.packages(c("httr", "jsonlite"))
 ```
-Request the data
+1. Request the data
 ```{r}
 library(httr)
 library(jsonlite)
@@ -163,7 +163,7 @@ sr_response <- GET(sr_url, query = sr_query)
 # A status code of 200 means the request worked
 status_code(sr_response)
 ```
-Parse the response
+2. Parse the response
 
 ```{r}
 # Pull the body of the response out as text, then turn the JSON into a data frame.
@@ -176,7 +176,7 @@ nrow(west_town_311)
 names(west_town_311)
 ```
 
-Summarize
+3. Summarize
 ```{r}
 # Count how many requests there are of each type,
 # sort from most to least common, and keep the top 10
@@ -185,6 +185,8 @@ west_town_311 |>
   slice_head(n = 10)
 ```
 
+4. Interpretation
+The top request was graffiti removal (200/1,000, roughly 1 in 5). It was followed by rat complaints, parking enforcement reviews, yard waste pick-up, potholes, sign repair, and street lights out. Majority of the requests are about keeping the neighbourhood clean, which suggests that residents of West Town mainly rely on 311 for everyday cleanup of streets and public spaces. Though, the data can't tell whether the problem got fixed or how well. About half of the requests were still open.  
 
 
 
