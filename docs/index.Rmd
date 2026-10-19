@@ -132,9 +132,6 @@ write_csv(books, "books.csv")
 
 Part III: Open data API (Chicago Data Portal)
 
-```{r}
-install.packages(c("httr", "jsonlite"))
-```
 1. Request the data
 ```{r}
 library(httr)
@@ -188,9 +185,9 @@ west_town_311 |>
 4. Interpretation
 The top request was graffiti removal (200/1,000, roughly 1 in 5). It was followed by rat complaints, parking enforcement reviews, yard waste pick-up, potholes, sign repair, and street lights out. Majority of the requests are about keeping the neighbourhood clean, which suggests that residents of West Town mainly rely on 311 for everyday cleanup of streets and public spaces. Though, the data can't tell whether the problem got fixed or how well. About half of the requests were still open.  
 
-
-
-
 Part IV: Census API (tidycensus)
+
+
+
 Part V: Civic data ethics
 
