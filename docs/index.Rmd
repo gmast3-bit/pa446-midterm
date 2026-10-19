@@ -89,7 +89,7 @@ nrow(books)
 head(books)
 ```
 
-2.2 Numeric price and save to CSV
+Question 2.2 Numeric price and save to CSV
 ```{r}
 books <- books |>
   mutate(price = round(parse_number(price), 2))
