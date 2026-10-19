@@ -1,0 +1,96 @@
+---
+title: "PA 446 - Midterm"
+author: "Gulshan Mastonova"
+date: "2026-10-15"
+output: html_document:
+  theme: flatly
+  toc: true
+  toc_float: true
+  pdf_document:
+    toc: true
+---
+
+Part I: Repository and workflow
+
+Part II: Web scraping
+
+Question 1: Scrape a table
+
+```{r}
+library(rvest)
+library(dplyr)
+library(janitor)
+library(readr)
+library(purrr)
+```
+
+Read the Wikipedia page on Chicago community areas into R
+```{r}
+ca_page <- read_html("https://en.wikipedia.org/wiki/Community_areas_in_Chicago")
+```
+
+This page consists of more than one table, so I'll grab akk the data tables ("wikitable")
+```{r}
+ca_tables <- ca_page |>
+  html_elements("table.wikitable") |>
+  html_table()
+```
+
+The number of tables we found
+```{r}
+length(ca_tables)
+```
+
+Keeping the table that has a "Total Population" column (the one that lists every community area and its population)
+```{r}
+ca_raw <- ca_tables |>
+  keep(~ "Total Population" %in% names(.x)) |>
+  pluck(1)
+
+nrow(ca_raw)
+head(ca_raw)
+```
+Question 2: Scrape with CSS selectors
+Question 2.1. Extract title, price and availability
+
+Reading the books' first page to scrape
+```{r}
+books_page <- read_html("https://books.toscrape.com/")
+```
+
+Each book is inside <article class="product_pod">
+Full title is in the "title" attribute of the link inside <h3> (visible text is cut off for long titles)
+```{r}
+title <- books_page |>
+  html_elements("article.product_pod h3 a") |>
+  html_attr("title")
+```
+
+Price is the text of <p class="price_color">
+```{r}
+price <- books_page |>
+  html_elements("article.product_pod p.price_color") |>
+  html_text2()
+```
+
+Availability is the next of <p class="instock availability">
+```{r}
+availability <- books_page |>
+  html_elements("article.product_pod p.instock.availability") |>
+  html_text2()
+```
+
+Now, I have to combine the three vectors into one table
+```{r}
+books <- tibble(title, price, availability)
+
+nrow(books)
+head(books)
+```
+
+
+
+Part III: Open data API (Chicago Data Portal)
+Part IV: Census API (tidycensus)
+Part V: Civic data ethics
+
