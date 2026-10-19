@@ -1,0 +1,330 @@
+---
+title: "PA 446 - Midterm"
+author: "Gulshan Mastonova"
+date: "2026-10-15"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: true   
+---
+
+Part I: Repository and workflow
+
+Part II: Web scraping
+
+Question 1: Scrape a table
+
+```{r}
+library(rvest)
+library(dplyr)
+library(janitor)
+library(readr)
+library(purrr)
+```
+
+Read the Wikipedia page on Chicago community areas into R
+```{r}
+ca_page <- read_html("https://en.wikipedia.org/wiki/Community_areas_in_Chicago")
+```
+
+This page consists of more than one table, so I'll grab akk the data tables ("wikitable")
+```{r}
+ca_tables <- ca_page |>
+  html_elements("table.wikitable") |>
+  html_table()
+```
+
+The number of tables we found
+```{r}
+length(ca_tables)
+```
+
+Keeping the table that has a "Total Population" column (the one that lists every community area and its population)
+```{r}
+ca_raw <- ca_tables |>
+  keep(~ "Total Population" %in% names(.x)) |>
+  pluck(1)
+
+nrow(ca_raw)
+head(ca_raw)
+```
+Question 2: Scrape with CSS selectors
+Question 2.1. Extract title, price and availability
+
+Reading the books' first page to scrape
+```{r}
+books_page <- read_html("https://books.toscrape.com/")
+```
+
+Each book is inside <article class="product_pod">
+Full title is in the "title" attribute of the link inside <h3> (visible text is cut off for long titles)
+```{r}
+title <- books_page |>
+  html_elements("article.product_pod h3 a") |>
+  html_attr("title")
+```
+
+Price is the text of <p class="price_color">
+```{r}
+price <- books_page |>
+  html_elements("article.product_pod p.price_color") |>
+  html_text2()
+```
+
+Availability is the text of <p class="instock availability">
+```{r}
+availability <- books_page |>
+  html_elements("article.product_pod p.instock.availability") |>
+  html_text2()
+```
+
+Now, I have to combine the three vectors into one table
+```{r}
+books <- tibble(title, price, availability)
+
+nrow(books)
+head(books)
+```
+
+Question 2.2 Numeric price and save to CSV
+```{r}
+books <- books |>
+  mutate(price = round(parse_number(price), 2))
+
+nrow(books)
+head(books)
+```
+
+Save the table as books.csv
+```{r}
+write_csv(books, "books.csv")
+```
+
+BONUS
+The rating is stored as a class name, e.g. <p class="star-rating Three">. Pulling the class and dropping "star-rating", and mapping the word to a number 1-5
+```{r}
+library(stringr)
+```
+
+
+```{r}
+rating_word <- books_page |>
+  html_elements("article.product_pod p.star-rating") |>
+  html_attr("class") |>
+  str_remove("star-rating ")
+
+books <- books |>
+  mutate(rating = recode(rating_word,
+                         One = 1, Two = 2, Three = 3, Four = 4, Five = 5))
+
+nrow(books)
+head(books)
+```
+
+Saving the CSV file again, so it includes the rating column
+```{r}
+write_csv(books, "books.csv")
+```
+
+
+Part III: Open data API (Chicago Data Portal)
+
+1. Request the data
+```{r}
+library(httr)
+library(jsonlite)
+library(dplyr)
+
+# Chicago Data Portal endpoint for 311 service requests (no API key needed)
+sr_url <- "https://data.cityofchicago.org/resource/v6vf-nfxy.json"
+
+# Query parameters:
+# - community_area "24" keeps only West Town (written as text)
+# - $where keeps requests created on or after Jan 1, 2026
+# - $order puts the newest requests first
+# - $limit caps the result at 1,000 rows
+
+sr_query <- list(
+  community_area = "24",
+  `$where` = "created_date >= '2026-01-01T00:00:00'",
+  `$order` = "created_date DESC",
+  `$limit` = 1000
+)
+
+# Send the GET request with those parameters
+sr_response <- GET(sr_url, query = sr_query)
+
+# A status code of 200 means the request worked
+status_code(sr_response)
+```
+2. Parse the response
+
+```{r}
+# Pull the body of the response out as text, then turn the JSON into a data frame.
+# flatten = TRUE spreads nested fields (like location) into regular columns
+sr_text <- content(sr_response, as = "text", encoding = "UTF-8")
+west_town_311 <- fromJSON(sr_text, flatten = TRUE)
+
+# Number of rows (should be 1,000) and the column names
+nrow(west_town_311)
+names(west_town_311)
+```
+
+3. Summarize
+```{r}
+# Count how many requests there are of each type,
+# sort from most to least common, and keep the top 10
+west_town_311 |>
+  count(sr_type, sort = TRUE) |>
+  slice_head(n = 10)
+```
+
+4. Interpretation
+The top request was graffiti removal (200/1,000, roughly 1 in 5). It was followed by rat complaints, parking enforcement reviews, yard waste pick-up, potholes, sign repair, and street lights out. Majority of the requests are about keeping the neighbourhood clean, which suggests that residents of West Town mainly rely on 311 for everyday cleanup of streets and public spaces. Though, the data can't tell whether the problem got fixed or how well. About half of the requests were still open.  
+
+Part IV: Census API (tidycensus)
+
+Step 1: Identify the variables
+
+| Variable | Code |
+|---|---|
+| Gross rent as % of household income, Total | B25070_001E |
+| Gross rent as % of household income, 50.0 percent or more | **B25070_010E** |
+| Median household income | **B19013_001E** |
+
+I found B25070_010E by browsing the B25070 group, and B19013_001E by browsing the B19013 group
+(Median Household Income in the Past 12 Months).
+
+Step 2: Retrieve the data
+
+```{r}
+# Load tidycensus (Census API) and tidyverse (dplyr, tidyr, ggplot2)
+# The API key is read from .Renviron, so it never appears in this file
+library(tidycensus)
+library(tidyverse)
+
+# Get the three variables for every county in Ohio from the 2024 ACS 5-year.
+# Naming the variables here gives readable names instead of codes
+ohio_raw <- get_acs(
+  geography = "county",
+  state = "OH",
+  variables = c(rent_total    = "B25070_001",
+                rent_50plus   = "B25070_010",
+                median_income = "B19013_001"),
+  year = 2024,
+  survey = "acs5"
+)
+
+# Long format: 3 rows per county (88 counties x 3 = 264 rows)
+nrow(ohio_raw)
+head(ohio_raw)
+```
+
+Step 3: Clean and transform
+```{r}
+# 1. Drop the margin of error, then pivot so each county is one row
+#    with the three estimates side by side
+# 2. severe_burden_rate = share of renter households paying 50%+ of income on rent
+# 3. Sort from highest to lowest rate
+ohio <- ohio_raw |>
+  select(GEOID, NAME, variable, estimate) |>
+  pivot_wider(names_from = variable, values_from = estimate) |>
+  mutate(severe_burden_rate = rent_50plus / rent_total * 100) |>
+  arrange(desc(severe_burden_rate))
+
+nrow(ohio)
+head(ohio)
+```
+
+Bonus: Split NAME into county and state
+
+```{r p4-bonus}
+# NAME looks like "Athens County, Ohio" -- split it at ", " into two columns
+ohio <- ohio |>
+  separate_wider_delim(NAME, delim = ", ", names = c("county", "state"))
+
+head(ohio)
+```
+
+Step 4: Analyze
+```{r}
+# Mean and median severe burden rate across Ohio's 88 counties
+ohio |>
+  summarise(mean_rate   = mean(severe_burden_rate),
+            median_rate = median(severe_burden_rate))
+
+# The 5 counties with the highest rates
+top5 <- ohio |>
+  slice_max(severe_burden_rate, n = 5) |>
+  select(county, severe_burden_rate, median_income)
+top5
+
+# The 5 counties with the lowest rates
+bottom5 <- ohio |>
+  slice_min(severe_burden_rate, n = 5) |>
+  select(county, severe_burden_rate, median_income)
+bottom5
+```
+
+Step 5: Visualize
+
+```{r}
+# Scatterplot: each point is a county. geom_smooth(method = "lm") adds a
+# straight regression line with a shaded confidence band
+ggplot(ohio, aes(x = median_income, y = severe_burden_rate)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(labels = scales::dollar) +
+  labs(
+    title = "Higher-income Ohio counties have slightly lower severe rent burden",
+    subtitle = "Ohio counties, 2024 ACS 5-year estimates",
+    x = "Median household income",
+    y = "Severely rent-burdened renters (%)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Stack the top 5 and bottom 5 into one table and label each group
+top_bottom <- bind_rows(
+  top5    |> mutate(group = "Highest 5"),
+  bottom5 |> mutate(group = "Lowest 5")
+)
+
+# Bar chart: reorder() sorts the bars by rate; coord_flip() makes the
+# bars horizontal so county names are easy to read
+ggplot(top_bottom,
+       aes(x = reorder(county, severe_burden_rate),
+           y = severe_burden_rate, fill = group)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Ohio counties with the highest and lowest severe rent burden",
+    subtitle = "Share of renter households paying 50%+ of income on rent, 2024 ACS 5-year",
+    x = NULL,
+    y = "Severely rent-burdened renters (%)",
+    fill = NULL
+  ) +
+  theme_minimal()
+```
+
+Step 6: Reflect
+Q1: Income and severe rent burden
+This relationship is negative but weak: correlation was about -0.15, and the regression line slopes down only slightly. The possible explanation would be that college counties are at the top of the list, like Athens (Ohio University) and Portage (Kent State), where students report small income but still pay rent, that pushes the rate up. Also, urban counties like Hamilton and Lorain they both have higher rents and more low-income renters, even though the median income isn't low. Though, the median household income covers all households, who usually earn more than renter. 
+Q2: County level ACS's for targeting rental assistance two limitations would probably be: margins of error where small rural counties have less renters, hence the estimates are noisy. Also the fact that who's counted: the households with no cash rent or zero income are left out, and students distort the rate. 
+
+
+Part V: Civic data ethics
+
+Q1:Privacy: The data I pulled from 311 for West Town includes each request's street address plus the exact longitude and latitude. If i mapped those points on my Github page, a single point identification could lead to a specific household. For instance, a building complaint at a two-flat would reveal who exactly reported and about what, and this would lead to embarrassment or retaliation from a landlord. This risk needs to be reduced. One way to do that is: instead of plotting each request, I would drop the street_address and coordinate columns and count requests. by census tract, and map the totals. Also I would suppress any area-request-type combination with less than five requests. This map would lose the block-level detail, but would still show where needs are concentrated without revealing the individual. 
+
+Q2: Bias and quality
+311 counts measures who reports the issues, not revealing the location. In the West Town data, graffiti removal made about 20percent of the 1,000 most recent requests, which may show a few active businesses who report often, not where it actually is. Poeple who don't have phone or don't speak English are not likely to call. If a city manager sends repairs based on only request, the high-reporting blocks get the problem solved faster, rather than the lower-reporting blocks. Those residents may then stop reporting, which makes the gap even worse. To prevent this from happening the manager could send the repair crew to random sample of blocks for problems like potholes or city light brokage and compare what they find to 311 counts. 
+
+Q3: Scraping responsibly
+According to the standards from Week 5, the scraping I completed in Part II was suitable. First, it was permitted on both sites: Wikipedia's information is openly licensed, and its robots.txt permits article pages. Books to Scrape was created especially for scraping practice. Second, as the data included fictitious book listings and community area population totals rather than personal information, it was public and not private. Third, my goal was educational, and I only made one request to each page, so I didn't burden their systems. In contrast, if I wanted to gather postings from a West Town neighborhood Facebook page about troublesome neighbors or landlords, I shouldn't scrape without further assessment. The platform's terms of service probably forbid scraping, such posts contain private residents' personal information who did not consent to be examined, and republishing them could have serious negative effects. 
+
+
