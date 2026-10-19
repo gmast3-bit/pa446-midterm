@@ -2,12 +2,13 @@
 title: "PA 446 - Midterm"
 author: "Gulshan Mastonova"
 date: "2026-10-15"
-output: html_document:
-  theme: flatly
-  toc: true
-  toc_float: true
-  pdf_document:
+output:
+  html_document:
+    theme: flatly
     toc: true
+    toc_float: true
+  pdf_document:
+    toc: true   
 ---
 
 Part I: Repository and workflow
@@ -73,7 +74,7 @@ price <- books_page |>
   html_text2()
 ```
 
-Availability is the next of <p class="instock availability">
+Availability is the text of <p class="instock availability">
 ```{r}
 availability <- books_page |>
   html_elements("article.product_pod p.instock.availability") |>
@@ -88,6 +89,45 @@ nrow(books)
 head(books)
 ```
 
+2.2 Numeric price and save to CSV
+```{r}
+books <- books |>
+  mutate(price = round(parse_number(price), 2))
+
+nrow(books)
+head(books)
+```
+
+Save the table as books.csv
+```{r}
+write_csv(books, "books.csv")
+```
+
+BONUS
+The rating is stored as a class name, e.g. <p class="star-rating Three">. Pulling the class and dropping "star-rating", and mapping the word to a number 1-5
+```{r}
+library(stringr)
+```
+
+
+```{r}
+rating_word <- books_page |>
+  html_elements("article.product_pod p.star-rating") |>
+  html_attr("class") |>
+  str_remove("star-rating ")
+
+books <- books |>
+  mutate(rating = recode(rating_word,
+                         One = 1, Two = 2, Three = 3, Four = 4, Five = 5))
+
+nrow(books)
+head(books)
+```
+
+Saving the CSV file again, so it includes the rating column
+```{r}
+write_csv(books, "books.csv")
+```
 
 
 Part III: Open data API (Chicago Data Portal)
